@@ -6,7 +6,7 @@ from common.common_module import *
 import plotly.express as px
 from Composite_Main.CUMULATIVE_COMPOSITE import runDenodo_Cumulative_Composite_Performance
 from Composite_Main.COMPOSITE_LIST import composite_list
-from Composite_Main.COMPOSITE_DISCLOSURE import composite_disclosure
+from Composite_Main.COMPOSITE_DISCLOSURE import runDenodo_Composite_Disclosure
 import plotly.graph_objects as go
 
 dash.register_page(__name__)
@@ -14,7 +14,7 @@ dash.register_page(__name__)
 df_comp = composite_list
 options_dict = dict(zip(df_comp['composite_name'], df_comp['composite_code']))
 dff_comp = composite_list.composite_name
-df_cdisc = composite_disclosure
+#df_cdisc = composite_disclosure
 
 x = "INT_EQ"
 z = "2023-02-28"
@@ -34,9 +34,9 @@ layout = html.Div([
         figure={},
         style={'width':'50%', 'height': '30%'}),
     html.H3(children='Composite Disclosure',style={'textAlign':'left'}),
-    html.Div(df_cdisc.composite_description, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'}),
+    html.Div(id = "composite_description", children= {}, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'}),
     html.H3(children='Fee Scale',style={'textAlign':'left'}),
-    html.Div(df_cdisc.fee_scale_description, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'})
+    html.Div(id = "fee_scale_description", children = {}, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'})
 ])
 """
 @callback(
@@ -83,8 +83,23 @@ def cumulative_fig_ccpure(col_chosen):
 
 #%%
 #Composite & Fee Scale Description
-#dff_cdisc = df_cdisc.composite_description + '\n' + df_cdisc.fee_scale_description
 
+@callback(
+    Output(component_id='composite_description', component_property='children'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
 
+def composite_description_update(col_chosen):
+    df_cdisc = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=y,valuation_date=z)
+    children = df_cdisc.composite_description
+    return children
 
+@callback(
+    Output(component_id='fee_scale_description', component_property='children'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
 
+def fee_scale_description_update(col_chosen):
+    df_cdisc_f = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=y,valuation_date=z)
+    children = df_cdisc_f.fee_scale_description
+    return children
