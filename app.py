@@ -2,6 +2,7 @@
 from dash import Dash, html, dcc
 import dash
 
+
 #%%
 
 app = Dash(__name__, use_pages=True)   

@@ -4,9 +4,10 @@ from dash import Dash, html, dcc, callback, Output, Input, dash_table
 import dash
 from common.common_module import *
 import plotly.express as px
-from Composite_Main.CUMULATIVE_COMPOSITE import runDenodo_Cumulative_Composite_Performance
+from Composite_Main.CUMULATIVE_PERFORMANCE import runDenodo_Cumulative_Composite_Performance, runDenodo_Composite_Performance
 from Composite_Main.COMPOSITE_LIST import composite_list
 from Composite_Main.COMPOSITE_DISCLOSURE import runDenodo_Composite_Disclosure
+from Composite_Main.COMPOSITE_INFO import runDenodo_Composite_Details
 import plotly.graph_objects as go
 
 dash.register_page(__name__)
@@ -16,7 +17,8 @@ options_dict = dict(zip(df_comp['composite_name'], df_comp['composite_code']))
 dff_comp = composite_list.composite_name
 #df_cdisc = composite_disclosure
 
-x = "INT_EQ"
+
+#x = "INT_EQ"
 z = "2023-02-28"
 y = "USD"
 
@@ -29,26 +31,92 @@ layout = html.Div([
         value = 'INT_EQ', 
         id='dropdown-selection'),
     html.Div(id='dd-output-container'),
-    dcc.Graph(
-        id="cumulative_composite",
-        figure={},
-        style={'width':'50%', 'height': '30%'}),
+    html.Div(children=[
+        dash_table.DataTable(
+            id = "composite_detail_table",
+            page_size=6, 
+            style_as_list_view=True,
+            style_data = {
+                'whiteSpace':'normal',
+                'height': 'auto'
+            },
+            style_header={
+                'fontWeight': 'bold'
+            },
+            style_cell={
+                'height':'auto',
+                'minWidth':'180px', 'width': '180px', 'maxWidth': '180px',
+                'whiteSpace': 'normal',
+                'textAlign': 'left'
+            },
+            style_cell_conditional=[
+                {'if': {'column_id': 'Composite Name'},
+                    'width': '40%'}
+                #{'if':{'column_id':}}
+            ],
+            fill_width = True),
+        dash_table.DataTable(
+            id = "composite_performance_table",
+            page_size=10, 
+            #style_as_list_view=True,
+            style_data = {
+                'whiteSpace':'normal',
+                'height': 'auto'
+            },
+            style_header={
+                'fontWeight': 'bold'
+            },
+            style_cell={
+                'height':'auto',
+                'minWidth':'180px', 'width': '180px', 'maxWidth': '180px',
+                'whiteSpace': 'normal',
+            },
+            style_cell_conditional=[
+                {'if': {'column_id': 'Period'},
+                    'width': '40%', 'textAlign':'left'}
+            ],
+            fill_width = True),
+            ],
+        style={'width': '20%', 'display':'inline-block', 'padding':'10px'}),
+    html.Div(children=[
+        dcc.Graph(
+            id="cumulative_composite",
+            figure={},
+            #style={'width':'50%', 'height': '40%', 'display':'inline-block', 'padding':'10px'}
+            ),
+        ],
+        style={'width':'50%', 'height': 'auto', 'display':'inline-block', 'padding':'10px'}
+        ),
     html.H3(children='Composite Disclosure',style={'textAlign':'left'}),
     html.Div(id = "composite_description", children= {}, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'}),
     html.H3(children='Fee Scale',style={'textAlign':'left'}),
     html.Div(id = "fee_scale_description", children = {}, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'})
-])
-"""
+],
+style= {'width':'100%','display':'inline-block'})
+
+#%%
+#Composite Details
+
 @callback(
-    Output('dd-output-container', 'children'),
-    Input('dropdown-selection', 'value')
+    Output(component_id='composite_detail_table', component_property='data'),
+    Input(component_id = 'dropdown-selection', component_property='value')
 )
-def update_output(value):
-    composite_code_value = df_comp.query('composite_name'==value,)['composite_code']
-    return composite_code_value
-    
-comp_value = update_output('dd-output-container')
-"""
+def composite_details_data(col_chosen):
+    df = runDenodo_Composite_Details(col_chosen)
+    df_out = df.to_dict('records')
+    return df_out
+
+#Composite Performance
+
+@callback(
+    Output(component_id='composite_performance_table', component_property='data'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
+def composite_details_data(col_chosen):
+    df = runDenodo_Composite_Performance(composite_code=col_chosen,reporting_currency=y,valuation_date=z)
+    df_out = df.to_dict('records')
+    return df_out
+
 
 #%%
 #Composite Cumulative Performance
