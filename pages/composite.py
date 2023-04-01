@@ -77,7 +77,7 @@ layout = html.Div([
             ],
             fill_width = True),
             ],
-        style={'width': '20%', 'display':'inline-block', 'padding':'10px'}),
+        style={'width': '15%', 'display':'inline-block', 'padding':'10px'}),
     html.Div(children=[
         dcc.Graph(
             id="cumulative_composite",
