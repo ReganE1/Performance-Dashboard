@@ -2,6 +2,7 @@
 import pandas as pd
 from dash import Dash, html, dcc, callback, Output, Input, dash_table
 import dash
+import numpy
 from datetime import date, timedelta, datetime
 from common.common_module import *
 import plotly.express as px
@@ -9,7 +10,7 @@ from Composite_Main.CUMULATIVE_PERFORMANCE import runDenodo_Cumulative_Composite
 from Composite_Main.COMPOSITE_LIST import composite_list
 from Composite_Main.COMPOSITE_DISCLOSURE import runDenodo_Composite_Disclosure
 from Composite_Main.COMPOSITE_INFO import runDenodo_Composite_Details
-from Composite_Main.COMPOSITE_BULL_BEAR import runDenodo_Composite_Defensive_Characteristics_Month, runDenodo_Composite_Defensive_Characteristics_Quarter, period_list
+from Composite_Main.COMPOSITE_BULL_BEAR import runDenodo_Composite_Defensive_Characteristics_Month, runDenodo_Composite_Defensive_Characteristics_Quarter, runDenodo_Composite_Defensive_Characteristics_Quarter_All,period_list
 import plotly.graph_objects as go
 
 dash.register_page(__name__)
@@ -95,7 +96,7 @@ layout = html.Div([
             ],
             fill_width = True),
             ],
-        style={'width': '15%', 'display':'inline-block', 'padding':'10px'}),
+        style={'width': '25%', 'display':'inline_block', 'vertical_align': 'top', 'padding':'10px'}),
     html.Div(children=[
         dcc.Graph(
             id="cumulative_composite",
@@ -103,7 +104,7 @@ layout = html.Div([
             #style={'width':'50%', 'height': '40%', 'display':'inline-block', 'padding':'10px'}
             ),
         ],
-        style={'width':'50%', 'height': 'auto', 'display':'inline-block', 'padding':'10px'}
+        style={'width':'40%', 'height': 'auto', 'display':'inline_block', 'vertical_align': 'top', 'padding':'10px'}
         ),
     html.H3(children='Composite Disclosure',style={'textAlign':'left'}),
     html.Div(id = "composite_description", children= {}, style = {'colour': 'black', 'fontSize': 36, 'width':'50%'}),
@@ -115,9 +116,14 @@ layout = html.Div([
             value = 'SINCE INCEPTION', 
             id='period-selection'),
         html.Div(id='dd-period-output-container'),
+        dcc.RadioItems(options =['Monthly','Quarterly'], value = 'Monthly', id='bull_bear_radio'),
         dcc.Graph(
-            id = "bull_bear_graph",
+            id = "bull_bear_graph_quarter",
             figure={}
+        ),
+        dcc.Graph(
+            id = "bull_bear_graph_month",
+            figure={},
         )
         ],
         style={'width':'50%', 'height': 'auto', 'display':'inline-block', 'padding':'10px'}
@@ -211,16 +217,78 @@ def fee_scale_description_update(col_chosen,date_chosen):
     children = df_cdisc_f.fee_scale_description
     return children
 
-"""
+
 #%%
-#Composite Bull Bear
+#Composite Bull Bear Quarter
 @callback(
-    Output(component_id='bull_bear_graph', component_property='figure'),
+    Output(component_id='bull_bear_graph_quarter', component_property='figure'),
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
     Input(component_id = 'date-picker-single', component_property='date')
 )
+def quarterly_bull_bear(period_chosen,col_chosen,date_chosen):
+    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    Column = df_bb_quarterly['Data_Point'].values.tolist()
+    Data = df_bb_quarterly['Data_Value'].values.tolist()
+    fig = go.Figure()
+    fig = px.bar(x=Column,y=Data)
+    fig.update_layout(title='Quarterly Bull Bear',
+                      xaxis_title='',
+                    yaxis_title='Count')
+    return fig
+
+#%%
+#Composite Bull Bear Month
+@callback(
+    Output(component_id='bull_bear_graph_month', component_property='figure'),
+    Input(component_id = 'period-selection', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date')
+)
+def monthly_bull_bear(period_chosen,col_chosen,date_chosen):
+    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Month(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    Column = df_bb_quarterly['Data_Point'].values.tolist()
+    Data = df_bb_quarterly['Data_Value'].values.tolist()
+    fig = go.Figure()
+    fig = px.bar(x=Column,y=Data)
+    fig.update_layout(title='Monthly Bull Bear',
+                      xaxis_title='',
+                    yaxis_title='Count')
+    return fig
+#%%
+
+#
+@callback(
+    Output(component_id='bull_bear_radio', component_property='style'),
+    Input(component_id='date-picker-single', component_property='date')
+)
+def bull_bear_radio_visibility(date_chosen):
+    date = datetime.strptime(date_chosen,'%Y-%m-%d')
+    month = date.month
+    if month in (1,2,4,5,7,8,10,11):
+        return {'display':'none'}
+    else: return {'display':'inline'}
 
 
 
-"""
+
+#Chart visibility rules
+
+@callback(
+    Output(component_id='bull_bear_graph_quarter', component_property='style'),
+    Input(component_id='bull_bear_radio', component_property='value')
+)
+def quarterly_bull_bear_visibility(type):
+    if type == 'Quarterly':
+        return {'display':'block'}
+    else: return {'display':'none'}
+
+@callback(
+    Output(component_id='bull_bear_graph_month', component_property='style'),
+    Input(component_id='bull_bear_radio', component_property='value')
+)
+def quarterly_bull_bear_visibility(type):
+    if type == 'Monthly':
+        return {'display':'block'}
+    else: return {'display':'none'}
+
