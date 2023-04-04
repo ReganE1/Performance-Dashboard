@@ -6,11 +6,13 @@ import numpy
 from datetime import date, timedelta, datetime
 from common.common_module import *
 import plotly.express as px
-from Composite_Main.CUMULATIVE_PERFORMANCE import runDenodo_Cumulative_Composite_Performance, runDenodo_Composite_Performance
+from xlsxwriter.utility import xl_rowcol_to_cell
+#from dash_extensions.snippets import send_bytes
+from Composite_Main.CUMULATIVE_PERFORMANCE import runDenodo_Cumulative_Composite_Performance, runDenodo_Composite_Performance, runDenodo_Composite_Performance_Extract
 from Composite_Main.COMPOSITE_LIST import composite_list
 from Composite_Main.COMPOSITE_DISCLOSURE import runDenodo_Composite_Disclosure
 from Composite_Main.COMPOSITE_INFO import runDenodo_Composite_Details
-from Composite_Main.COMPOSITE_BULL_BEAR import runDenodo_Composite_Defensive_Characteristics_Month, runDenodo_Composite_Defensive_Characteristics_Quarter, runDenodo_Composite_Defensive_Characteristics_Quarter_All,period_list
+from Composite_Main.COMPOSITE_BULL_BEAR import runDenodo_Composite_Defensive_Characteristics_Month, runDenodo_Composite_Defensive_Characteristics_Quarter, runDenodo_Composite_Defensive_Characteristics_All,period_list
 import plotly.graph_objects as go
 
 dash.register_page(__name__)
@@ -124,10 +126,28 @@ layout = html.Div([
         dcc.Graph(
             id = "bull_bear_graph_month",
             figure={},
-        )
+        ),
+        html.Div(children=[
+            dash_table.DataTable(
+                id = "period_performance",
+                ),
+            dash_table.DataTable(
+                id = "period_count",
+                ),
+            dash_table.DataTable(
+                id = "period_bulls",
+                ),
+            dash_table.DataTable(
+                id = "period_bears",
+                )
+                ],
+            style={'width': '25%', 'display':'grid', 'vertical_align': 'top', 'padding':'10px'}
+            ),
         ],
         style={'width':'50%', 'height': 'auto', 'display':'inline-block', 'padding':'10px'}
-    )
+        ),
+    html.Button("Download Excel", id="btn_comp_xlsx"),
+    dcc.Download(id="download-dataframe-xlsx")
     ],
 style= {'width':'100%','display':'inline-block'})
 
@@ -156,7 +176,9 @@ def composite_details_data(col_chosen):
 )
 def composite_details_data(col_chosen,date_chosen):
     df = runDenodo_Composite_Performance(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
-    df_out = df.to_dict('records')
+    sub_select = df[['period_length', 'composite_gross_performance', 'composite_net_performance', 'benchmark_performance', 'relative_performance']]
+    data_out = sub_select.rename(columns={'period_length':'Period', 'composite_gross_performance':'Gross Perfomance', 'composite_net_performance':'Net Performance','benchmark_performance':'Index Performance','relative_performance':'Relative Performance'})
+    df_out = data_out.to_dict('records')
     return df_out
 
 
@@ -228,8 +250,9 @@ def fee_scale_description_update(col_chosen,date_chosen):
 )
 def quarterly_bull_bear(period_chosen,col_chosen,date_chosen):
     df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
-    Column = df_bb_quarterly['Data_Point'].values.tolist()
-    Data = df_bb_quarterly['Data_Value'].values.tolist()
+    output = df_bb_quarterly.loc[df_bb_quarterly['Data_Point'].isin(['Bull Count','Bear Count', 'Total Quarters'])]
+    Column = output['Data_Point'].values.tolist()
+    Data = output['Data_Value'].values.tolist()
     fig = go.Figure()
     fig = px.bar(x=Column,y=Data)
     fig.update_layout(title='Quarterly Bull Bear',
@@ -247,29 +270,30 @@ def quarterly_bull_bear(period_chosen,col_chosen,date_chosen):
 )
 def monthly_bull_bear(period_chosen,col_chosen,date_chosen):
     df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Month(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
-    Column = df_bb_quarterly['Data_Point'].values.tolist()
-    Data = df_bb_quarterly['Data_Value'].values.tolist()
+    output = df_bb_quarterly.loc[df_bb_quarterly['Data_Point'].isin(['Bull Count','Bear Count', 'Total Months'])]
+    Column = output['Data_Point'].values.tolist()
+    Data = output['Data_Value'].values.tolist()
     fig = go.Figure()
     fig = px.bar(x=Column,y=Data)
     fig.update_layout(title='Monthly Bull Bear',
                       xaxis_title='',
                     yaxis_title='Count')
     return fig
-#%%
 
-#
+
+#%%
+#bull bear chart radio buttons logic - not shown on month and always default to monthly
 @callback(
     Output(component_id='bull_bear_radio', component_property='style'),
+    Output(component_id='bull_bear_radio', component_property='value'),
     Input(component_id='date-picker-single', component_property='date')
 )
 def bull_bear_radio_visibility(date_chosen):
     date = datetime.strptime(date_chosen,'%Y-%m-%d')
     month = date.month
     if month in (1,2,4,5,7,8,10,11):
-        return {'display':'none'}
-    else: return {'display':'inline'}
-
-
+        return {'display':'none'}, 'Monthly'
+    else: return {'display':'inline'}, 'Monthly'
 
 
 #Chart visibility rules
@@ -292,3 +316,117 @@ def quarterly_bull_bear_visibility(type):
         return {'display':'block'}
     else: return {'display':'none'}
 
+#%%
+#period performance - missing relative
+
+
+@callback(
+    Output(component_id='period_performance', component_property='data'),
+    Input(component_id = 'period-selection', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date')
+)
+def period_performance_table(period_chosen,col_chosen,date_chosen):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    output = df.loc[df['data'].isin(['composite_performance','benchmark_performance', 'cpi_performance'])]
+    df_out = output.to_dict('records')
+    return df_out
+
+@callback(
+    Output(component_id='period_count', component_property='data'),
+    Input(component_id = 'period-selection', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id='bull_bear_radio', component_property='value')
+)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    if type == 'Monthly':
+        period_performance_rows = ['bull_count_month','bear_count_month', 'total_months']
+    else: period_performance_rows = ['bull_count_quarter','bear_count_quarter', 'total_quarters']
+    output = df.loc[df['data'].isin(period_performance_rows)]
+    df_out = output.to_dict('records')
+    return df_out
+    
+@callback(
+    Output(component_id='period_bulls', component_property='data'),
+    Input(component_id = 'period-selection', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id='bull_bear_radio', component_property='value')
+)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    if type == 'Monthly':
+        period_bulls_rows = ['composite_performance_bull_month','benchmark_performance_bull_month']
+    else: period_bulls_rows = ['composite_performance_bull_quarter','benchmark_performance_bull_quarter']
+    output = df.loc[df['data'].isin(period_bulls_rows)]
+    df_out = output.to_dict('records')
+    return df_out
+
+@callback(
+    Output(component_id='period_bears', component_property='data'),
+    Input(component_id = 'period-selection', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id='bull_bear_radio', component_property='value')
+)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+    if type == 'Monthly':
+        period_bulls_rows = ['composite_performance_bear_month','benchmark_performance_bear_month']
+    else: period_bulls_rows = ['composite_performance_bear_quarter','benchmark_performance_bear_quarter']
+    output = df.loc[df['data'].isin(period_bulls_rows)]
+    df_out = output.to_dict('records')
+    return df_out
+
+
+#%%
+#excel download
+periodic_periods = ['1 YEAR ROLLING',
+'10 YEAR ANNUALISED',
+'10 YEAR ROLLING',
+'15 YEAR ANNUALISED',
+'15 YEAR ROLLING',
+'2 YEAR ANNUALISED',
+'2 YEAR ROLLING',
+'20 YEAR ANNUALISED',
+'20 YEAR ROLLING',
+'25 YEAR ANNUALISED',
+'25 YEAR ROLLING',
+'3 YEAR ANNUALISED',
+'3 YEAR ROLLING',
+'4 YEAR ANNUALISED',
+'4 YEAR ROLLING',
+'5 YEAR ANNUALISED',
+'5 YEAR ROLLING',
+'7 YEAR ANNUALISED',
+'7 YEAR ROLLING',
+'SINCE INCEPTION',
+'SINCE INCEPTION ANNUALISED',
+'YTD']
+
+@callback(
+    Output("download-dataframe-xlsx","data"),
+    Input("btn_comp_xlsx", "n_clicks"),
+    Input(component_id = 'dropdown-selection', component_property='value'),
+    Input(component_id = 'date-picker-single', component_property='date'),
+    prevent_inital_call=True
+)
+def composite_returns_download(n_clicks,col_chosen,date_chosen):
+    if n_clicks is None:
+        return dash.no_update
+    else:
+        df = runDenodo_Composite_Performance_Extract(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+        def to_xlsx(bytes_io):
+            output_periodic = df.loc[df['period_length'].isin(periodic_periods)]
+            output_annual = df.loc[df['period_length'].isin(['YEAR'])]
+            output_quarterly = df.loc[df['period_length'].isin(['QUARTER'])]
+            output_monthly = df.loc[df['period_length'].isin(['MONTH'])]
+            with pd.ExcelWriter(bytes_io) as writer:
+                output_periodic.to_excel(writer, sheet_name="Periodic Returns", index= False)
+                output_annual.to_excel(writer, sheet_name="Annual Returns", index= False)
+                output_quarterly.to_excel(writer, sheet_name="Quarterly Returns", index= False)
+                output_monthly.to_excel(writer, sheet_name="Monthly Returns", index= False)
+        return dcc.send_bytes(to_xlsx, "Download_Composite_Returns.xlsx")
+    

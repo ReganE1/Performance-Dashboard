@@ -9,6 +9,7 @@ beautifulsoup4==4.12.0
 black==21.11b1
 bleach==6.0.0
 bokeh==3.1.0
+cachelib==0.9.0
 certifi==2021.5.30
 cffi==1.15.1
 charset-normalizer==2.0.4
@@ -19,16 +20,19 @@ common==0.4.15
 contourpy==1.0.7
 dash==2.9.2
 dash-core-components==2.0.0
+dash-extensions==0.1.13
 dash-html-components==2.0.0
 dash-table==5.0.0
 DateTime==5.1
 debugpy==1.6.6
 decorator==5.1.1
 defusedxml==0.7.1
+EditorConfig==0.12.3
 entrypoints==0.4
 executing==1.2.0
 fastjsonschema==2.16.3
 Flask==2.0.1
+Flask-Caching==2.0.2
 greenlet==1.1.1
 idna==3.2
 importlib-metadata==6.1.0
@@ -38,6 +42,7 @@ ipywidgets==8.0.6
 itsdangerous==2.0.1
 jedi==0.18.2
 Jinja2==3.1.2
+jsbeautifier==1.14.7
 json5==0.9.11
 jsonschema==4.17.3
 jupyter-bokeh==3.0.7
@@ -51,6 +56,7 @@ Markdown==3.4.3
 MarkupSafe==2.0.1
 matplotlib-inline==0.1.6
 mistune==2.0.5
+more-itertools==9.1.0
 mypy-extensions==0.4.3
 nbclient==0.7.2
 nbconvert==7.2.10
@@ -112,6 +118,7 @@ websocket-client==1.5.1
 websockets==10.4
 Werkzeug==2.0.1
 widgetsnbextension==4.0.7
+XlsxWriter==3.0.9
 xlwings==0.25.1
 xyzservices==2023.2.0
 zipp==3.15.0

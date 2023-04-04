@@ -25,8 +25,8 @@ def runDenodo_Composite_Defensive_Characteristics_Month(composite_code,reporting
     transposed = df.transpose()
     indexed =transposed.reset_index()
     renamed = indexed.rename(columns={'index':'Data_Point',0:'Data_Value'})
-    final = renamed.loc[renamed['Data_Point'].isin(['Bull Count','Bear Count', 'Total Months'])]
-    return final
+    #final = renamed.loc[renamed['Data_Point'].isin(['Bull Count','Bear Count', 'Total Months'])]
+    return renamed
 
 #%%
 def runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code,reporting_currency,valuation_date,period_length):
@@ -41,8 +41,8 @@ def runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code,reporti
     transposed = df.transpose()
     indexed =transposed.reset_index()
     renamed = indexed.rename(columns={'index':'Data_Point',0:'Data_Value'})
-    final = renamed.loc[renamed['Data_Point'].isin(['Bull Count','Bear Count', 'Total Quarters'])]
-    return final
+    #final = renamed.loc[renamed['Data_Point'].isin(['Bull Count','Bear Count', 'Total Quarters'])]
+    return renamed
 
 #output = runDenodo_Composite_Defensive_Characteristics_Quarter("INT_EQ","USD","2022-12-31","SINCE INCEPTION")
 #Column = output['Data_Point'].values.tolist()
@@ -50,15 +50,17 @@ def runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code,reporti
 
 
 #%%
-def runDenodo_Composite_Defensive_Characteristics_Quarter_All(composite_code,reporting_currency,valuation_date,period_length):
+def runDenodo_Composite_Defensive_Characteristics_All(composite_code,reporting_currency,valuation_date, period_length):
     
 
-    Sql = "select period_length, bull_count_quarter, bear_count_quarter, total_quarters, composite_performance_bull_quarter, benchmark_performance_bull_quarter, composite_performance_bear_quarter, benchmark_performance_bear_quarter, composite_net_performance_bull_quarter, composite_net_performance_bear_quarter, relative_net_performance_bull_quarter, relative_net_performance_bear_quarter from mondrian.i_cor_defensive_characteristics where period_length = '" + period_length + "' and expressed_currency = '" + reporting_currency + "' and composite_code ='" + composite_code + "' and valuation_date ='" + valuation_date + "'"
+    Sql = "select * from mondrian.i_cor_defensive_characteristics where expressed_currency = '" + reporting_currency + "' and composite_code ='" + composite_code + "' and valuation_date ='" + valuation_date + "'"
 
 
-    data = run_sql("", "mondrian",command = Sql, database_type="Denodo")
-    output = data.drop(['period_length'], axis=1)
-    #df_bb_bar_quarterly = foo.set_index("Data_Point", inplace = True)
+    data = run_sql("", "mondrian",command = Sql, database_type="Denodo").set_index('period_length')
+    transposed = data.transpose()
+    indexed =transposed.reset_index()
+    out = indexed[['index',period_length]]
+    output = out.rename(columns={'index':'data'})
     return output
 #%%
 #out = runDenodo_Composite_Defensive_Characteristics_Quarter("INT_EQ","USD","2022-12-31","SINCE INCEPTION")
