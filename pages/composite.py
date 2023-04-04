@@ -27,7 +27,7 @@ df_comp = composite_list
 options_dict_comp = dict(zip(df_comp['composite_name'], df_comp['composite_code']))
 df_period = period_list
 #options_dict_period = dict(zip(period_list['period_length']))
-dff_comp = composite_list.composite_name
+#dff_comp = composite_list.composite_name
 #df_cdisc = composite_disclosure
 
 
@@ -149,7 +149,7 @@ layout = html.Div([
     html.Button("Download Excel", id="btn_comp_xlsx"),
     dcc.Download(id="download-dataframe-xlsx")
     ],
-style= {'width':'100%','display':'inline-block'})
+style= {'width':'100%','display':'grid'})
 
 @callback(
     Output('output-container-date-picker-single', 'children'),
