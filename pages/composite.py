@@ -76,6 +76,7 @@ layout = html.Div([
                 #{'if':{'column_id':}}
             ],
             fill_width = True),
+        html.Div(id='curr-output-container',style={'display':'none'}),
         dash_table.DataTable(
             id = "composite_performance_table",
             page_size=10, 
@@ -167,15 +168,26 @@ def composite_details_data(col_chosen):
     df_out = df.to_dict('records')
     return df_out
 
+@callback(
+    Output(component_id='curr-output-container', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
+def composite_reporting_currency(col_chosen):
+    df = runDenodo_Composite_Details(col_chosen)
+    df_out = df.loc[0,'Composite Currency']
+    return df_out
+
+
 #Composite Performance
 
 @callback(
     Output(component_id='composite_performance_table', component_property='data'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def composite_details_data(col_chosen,date_chosen):
-    df = runDenodo_Composite_Performance(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+def composite_details_data(col_chosen,date_chosen,comp_curr):
+    df = runDenodo_Composite_Performance(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen)
     sub_select = df[['period_length', 'composite_gross_performance', 'composite_net_performance', 'benchmark_performance', 'relative_performance']]
     data_out = sub_select.rename(columns={'period_length':'Period', 'composite_gross_performance':'Gross Perfomance', 'composite_net_performance':'Net Performance','benchmark_performance':'Index Performance','relative_performance':'Relative Performance'})
     df_out = data_out.to_dict('records')
@@ -188,10 +200,11 @@ def composite_details_data(col_chosen,date_chosen):
 @callback(
     Output(component_id='cumulative_composite', component_property='figure'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def cumulative_fig_ccpure(col_chosen, date_chosen):
-    df_ccp = runDenodo_Cumulative_Composite_Performance(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+def cumulative_fig_ccpure(col_chosen, date_chosen,comp_curr):
+    df_ccp = runDenodo_Cumulative_Composite_Performance(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen)
     dff_ccp =df_ccp.sort_values(by='period_ending')
     fig_ccp =go.Figure()
     #traces
@@ -220,22 +233,24 @@ def cumulative_fig_ccpure(col_chosen, date_chosen):
 @callback(
     Output(component_id='composite_description', component_property='children'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
 
-def composite_description_update(col_chosen,date_chosen):
-    df_cdisc = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+def composite_description_update(col_chosen,date_chosen,comp_curr):
+    df_cdisc = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen)
     children = df_cdisc.composite_description
     return children
 
 @callback(
     Output(component_id='fee_scale_description', component_property='children'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
 
-def fee_scale_description_update(col_chosen,date_chosen):
-    df_cdisc_f = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+def fee_scale_description_update(col_chosen,date_chosen,comp_curr):
+    df_cdisc_f = runDenodo_Composite_Disclosure(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen)
     children = df_cdisc_f.fee_scale_description
     return children
 
@@ -246,10 +261,11 @@ def fee_scale_description_update(col_chosen,date_chosen):
     Output(component_id='bull_bear_graph_quarter', component_property='figure'),
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def quarterly_bull_bear(period_chosen,col_chosen,date_chosen):
-    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def quarterly_bull_bear(period_chosen,col_chosen,date_chosen,comp_curr):
+    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Quarter(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     output = df_bb_quarterly.loc[df_bb_quarterly['Data_Point'].isin(['Bull Count','Bear Count', 'Total Quarters'])]
     Column = output['Data_Point'].values.tolist()
     Data = output['Data_Value'].values.tolist()
@@ -266,10 +282,11 @@ def quarterly_bull_bear(period_chosen,col_chosen,date_chosen):
     Output(component_id='bull_bear_graph_month', component_property='figure'),
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def monthly_bull_bear(period_chosen,col_chosen,date_chosen):
-    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Month(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def monthly_bull_bear(period_chosen,col_chosen,date_chosen,comp_curr):
+    df_bb_quarterly = runDenodo_Composite_Defensive_Characteristics_Month(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     output = df_bb_quarterly.loc[df_bb_quarterly['Data_Point'].isin(['Bull Count','Bear Count', 'Total Months'])]
     Column = output['Data_Point'].values.tolist()
     Data = output['Data_Value'].values.tolist()
@@ -324,10 +341,11 @@ def quarterly_bull_bear_visibility(type):
     Output(component_id='period_performance', component_property='data'),
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'date-picker-single', component_property='date')
+    Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def period_performance_table(period_chosen,col_chosen,date_chosen):
-    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def period_performance_table(period_chosen,col_chosen,date_chosen,comp_curr):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     output = df.loc[df['data'].isin(['composite_performance','benchmark_performance', 'cpi_performance'])]
     df_out = output.to_dict('records')
     return df_out
@@ -337,10 +355,11 @@ def period_performance_table(period_chosen,col_chosen,date_chosen):
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
     Input(component_id = 'date-picker-single', component_property='date'),
-    Input(component_id='bull_bear_radio', component_property='value')
+    Input(component_id='bull_bear_radio', component_property='value'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def period_performance_table(period_chosen,col_chosen,date_chosen, type):
-    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type, comp_curr):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     if type == 'Monthly':
         period_performance_rows = ['bull_count_month','bear_count_month', 'total_months']
     else: period_performance_rows = ['bull_count_quarter','bear_count_quarter', 'total_quarters']
@@ -353,10 +372,11 @@ def period_performance_table(period_chosen,col_chosen,date_chosen, type):
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
     Input(component_id = 'date-picker-single', component_property='date'),
-    Input(component_id='bull_bear_radio', component_property='value')
+    Input(component_id='bull_bear_radio', component_property='value'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def period_performance_table(period_chosen,col_chosen,date_chosen, type):
-    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type, comp_curr):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     if type == 'Monthly':
         period_bulls_rows = ['composite_performance_bull_month','benchmark_performance_bull_month']
     else: period_bulls_rows = ['composite_performance_bull_quarter','benchmark_performance_bull_quarter']
@@ -369,10 +389,11 @@ def period_performance_table(period_chosen,col_chosen,date_chosen, type):
     Input(component_id = 'period-selection', component_property='value'),
     Input(component_id = 'dropdown-selection', component_property='value'),
     Input(component_id = 'date-picker-single', component_property='date'),
-    Input(component_id='bull_bear_radio', component_property='value')
+    Input(component_id='bull_bear_radio', component_property='value'),
+    Input(component_id = 'curr-output-container', component_property='value')
 )
-def period_performance_table(period_chosen,col_chosen,date_chosen, type):
-    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen,period_length=period_chosen)
+def period_performance_table(period_chosen,col_chosen,date_chosen, type,comp_curr):
+    df = runDenodo_Composite_Defensive_Characteristics_All(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen,period_length=period_chosen)
     if type == 'Monthly':
         period_bulls_rows = ['composite_performance_bear_month','benchmark_performance_bear_month']
     else: period_bulls_rows = ['composite_performance_bear_quarter','benchmark_performance_bear_quarter']
@@ -411,13 +432,14 @@ periodic_periods = ['1 YEAR ROLLING',
     Input("btn_comp_xlsx", "n_clicks"),
     Input(component_id = 'dropdown-selection', component_property='value'),
     Input(component_id = 'date-picker-single', component_property='date'),
+    Input(component_id = 'curr-output-container', component_property='value'),
     prevent_inital_call=True
 )
-def composite_returns_download(n_clicks,col_chosen,date_chosen):
+def composite_returns_download(n_clicks,col_chosen,date_chosen,comp_curr):
     if n_clicks is None:
         return dash.no_update
     else:
-        df = runDenodo_Composite_Performance_Extract(composite_code=col_chosen,reporting_currency=y,valuation_date=date_chosen)
+        df = runDenodo_Composite_Performance_Extract(composite_code=col_chosen,reporting_currency=comp_curr,valuation_date=date_chosen)
         def to_xlsx(bytes_io):
             output_periodic = df.loc[df['period_length'].isin(periodic_periods)]
             output_annual = df.loc[df['period_length'].isin(['YEAR'])]

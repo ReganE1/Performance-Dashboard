@@ -12,6 +12,8 @@ import plotly.graph_objects as go
 from Portfolio_Main.PORTFOLIO_LIST import runDenodo_All_Portfolio
 from Portfolio_Main.PORTFOLIO_DETAIL import runDenodo_Portfolio_Detail
 from Portfolio_Main.PORTFOLIO_PERFORMANCE import runDenodo_Portfolio_Performance
+from Portfolio_Main.PORTFOLIO_HOLDINGS import runDenodo_Portfolio_Holdings
+from Portfolio_Main.PORTFOLIO_CHARACTERISTICS import runDenodo_Portfolio_Characteristics
 
 dash.register_page(__name__)
 
@@ -33,7 +35,7 @@ layout = html.Div([
     html.H1(children='Portfolio Dashboard', style={'textAlign':'center'}),
     dcc.Dropdown(
         options=[{'label':reporting_name_lookup, 'value':internal_account_code} for reporting_name_lookup,internal_account_code in options_dict_port.items()],
-        value = 'ASE - Alaska Permanent Fund Corporation', 
+        value = 'ASE', 
         id='dropdown-selection'),
     html.Div(id='dd-output-container'),
     dcc.DatePickerSingle(
@@ -68,6 +70,8 @@ layout = html.Div([
                 #{'if':{'column_id':}}
             ],
             fill_width = True),
+        html.Div(id='portfolio-curr-output-container',style={'display':'none'}),
+        html.Div(id='portfolio-id-output-container',style={'display':'none'}),
         dash_table.DataTable(
             id = "portfolio_performance_table",
             page_size=10, 
@@ -91,6 +95,17 @@ layout = html.Div([
             fill_width = True),
             ],
         style={'width': '25%', 'display':'inline_block', 'vertical_align': 'top', 'padding':'10px'}),
+    html.Div(children=[
+        dash_table.DataTable(
+            id = "portfolio_holdings_table",
+            page_size=10
+            ),
+        dash_table.DataTable(
+            id = "portfolio_characteristics_table",
+            page_size=10
+            )
+        ],
+        style={'width': '25%', 'display':'inline_block', 'vertical_align': 'top', 'padding':'10px'}),
     ],
 style= {'width':'100%','display':'grid'})
 
@@ -110,18 +125,70 @@ def portfolio_details_data(col_chosen):
     df_out = df.to_dict('records')
     return df_out
 
+@callback(
+    Output(component_id='portfolio-curr-output-container', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
+def portfolio_details_data(col_chosen):
+    df = runDenodo_Portfolio_Detail(col_chosen)
+    df_out = df.loc[0,'Account Reporting Currency']
+    return df_out
+
+
+@callback(
+    Output(component_id='portfolio-id-output-container', component_property='value'),
+    Input(component_id = 'dropdown-selection', component_property='value')
+)
+def portfolio_details_data(col_chosen):
+    df = runDenodo_Portfolio_Detail(col_chosen)
+    df_out = df.loc[0,'Portfolio ID']
+    out = str(df_out)
+    return out
+
 #%%
 #Portfolio Performance
 @callback(
     Output(component_id='portfolio_performance_table', component_property='data'),
-    Input(component_id = 'dropdown-selection', component_property='value'),
-    Input(component_id = 'portfolio-date-picker-single', component_property='date')
+    Input(component_id = 'portfolio-id-output-container', component_property='value'),
+    Input(component_id = 'portfolio-date-picker-single', component_property='date'),
+    Input(component_id = 'portfolio-curr-output-container', component_property='value')
 )
-def composite_details_data(col_chosen,date_chosen):
+def portfolio_details_data(port_id,date_chosen,port_curr):
     periods = ['MONTH','quarter','YTD','1 Year Rolling','3 Yrs Annualised','5 Yrs Annualised','7 Yrs Annualised','10 Yrs Annualised','15 Yrs Annualised','20 Yrs Annualised','25 Yrs Annualised','Since Inception','Since Inception Annualised']
-    df = runDenodo_Portfolio_Performance(portfolio_id=portfolio_id,reporting_currency=y,valuation_date=date_chosen)
+    df = runDenodo_Portfolio_Performance(portfolio_id=port_id,reporting_currency=port_curr,valuation_date=date_chosen)
     sub_select = df[['period_name', 'gross_return', 'net_return', 'benchmark_return_1', 'relative_return']]
     data_out = sub_select.rename(columns={'period_name':'Period', 'gross_return':'Gross Perfomance', 'net_return':'Net Performance','benchmark_return_1':'Index Performance','relative_return':'Relative Performance'})
     out = data_out.loc[data_out['Period'].isin(periods)]
     output = out.to_dict('records')
+    return output
+
+#%%
+#Portfolio Top 10 Holdings
+@callback(
+    Output(component_id='portfolio_holdings_table', component_property='data'),
+    Input(component_id = 'portfolio-id-output-container', component_property='value'),
+    Input(component_id = 'portfolio-date-picker-single', component_property='date')
+)
+def portfolio_details_data(port_id,date_chosen):
+    df = runDenodo_Portfolio_Holdings(portfolio_id=port_id,valuation_date=date_chosen)
+    filtered = df.sort_values(by='percentage_of_fund', ascending=False).head(10)
+    sub_select = filtered[['security_short_name', 'country', 'percentage_of_fund']]
+    data_out = sub_select.rename(columns={'security_short_name':'Security Name', 'country':'Country', 'percentage_of_fund':'Portfolio Weight'})
+    output = data_out.to_dict('records')
+    return output
+
+#%%
+#Portfolio Characteristics
+@callback(
+    Output(component_id='portfolio_characteristics_table', component_property='data'),
+    #Output(component_id='portfolio_characteristics_table', component_property='columns'),
+    Input(component_id = 'portfolio-id-output-container', component_property='value'),
+    Input(component_id = 'portfolio-date-picker-single', component_property='date')
+)
+def portfolio_characteristics_data(port_id,date_chosen):
+    df = runDenodo_Portfolio_Characteristics(portfolio_id=port_id,valuation_date=date_chosen)
+    #sub_select = df[['Statistic', 'Portfolio', 'Index']]
+    data_out = df.rename(columns={'index':'Statistics'})
+    output = data_out.to_dict('records')
+    #columns = [{'name': col, 'id': col} for col in df.columns]
     return output
